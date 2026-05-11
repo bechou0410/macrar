@@ -23,10 +23,6 @@ struct RarLicensePane: View {
                                 .textSelection(.enabled)
                         }
                     }
-                    if let date = info.purchaseDate {
-                        LabeledContent("Purchase date (est.)",
-                                       value: date.formatted(date: .abbreviated, time: .omitted))
-                    }
                     LabeledContent("Key file") {
                         Text(installedKeyPath ?? RarLicenseInstaller.installLocation.path)
                             .font(.system(.caption, design: .monospaced))

@@ -82,9 +82,6 @@ public enum RarLicenseInstaller {
         public let owner: String
         public let licenseType: String
         public let uid: String
-        /// Best-effort decode of the first 4 bytes of UID as a UNIX timestamp.
-        /// Nil when the value is implausible (outside 2000-01-01…now+1y).
-        public let purchaseDate: Date?
     }
 
     /// Returns parsed info from whichever known key location has a file.
@@ -106,35 +103,16 @@ public enum RarLicenseInstaller {
             throw InstallError.invalidFile
         }
 
-        let owner = lines.dropFirst().first(where: { !$0.isEmpty }) ?? ""
-        // License type is the second non-empty line after the header.
+        // First non-empty line after the header is the owner; second is the
+        // license type (e.g. "Single PC usage license").
         let nonHeader = lines.dropFirst().filter { !$0.isEmpty }
+        let owner = nonHeader.first ?? ""
         let licenseType = nonHeader.count > 1 ? nonHeader[1] : ""
 
         // UID line: `UID=<hex>`
         let uidLine = lines.first(where: { $0.hasPrefix("UID=") }) ?? ""
         let uid = String(uidLine.dropFirst(4))
 
-        return LicenseInfo(
-            owner: owner,
-            licenseType: licenseType,
-            uid: uid,
-            purchaseDate: decodeUIDTimestamp(uid)
-        )
-    }
-
-    /// Decode the first 4 hex bytes of the UID as a UNIX timestamp.
-    /// Returns nil if the result is outside the plausibility window —
-    /// avoids misleading users when the UID encoding format isn't a timestamp.
-    private static func decodeUIDTimestamp(_ uid: String) -> Date? {
-        guard uid.count >= 8 else { return nil }
-        let hexPrefix = String(uid.prefix(8))
-        guard let seconds = UInt32(hexPrefix, radix: 16) else { return nil }
-        let date = Date(timeIntervalSince1970: TimeInterval(seconds))
-        // Plausibility: between RAR's commercial era (~2000) and now + 1 year.
-        let lower = Date(timeIntervalSince1970: 946_684_800) // 2000-01-01
-        let upper = Date().addingTimeInterval(365 * 86400)
-        guard date >= lower && date <= upper else { return nil }
-        return date
+        return LicenseInfo(owner: owner, licenseType: licenseType, uid: uid)
     }
 }
