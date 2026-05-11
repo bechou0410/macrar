@@ -1,0 +1,167 @@
+name: MacRAR
+options:
+  bundleIdPrefix: com.bechou
+  deploymentTarget:
+    macOS: "15.0"
+  defaultConfig: Release
+  developmentLanguage: en
+  groupSortPosition: bottom
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    SWIFT_VERSION: 6.0
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    ARCHS: $(ARCHS_STANDARD)
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_EMIT_LOC_STRINGS: YES
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+    DEAD_CODE_STRIPPING: YES
+    OTHER_LDFLAGS: -ObjC
+
+packages:
+  RarKit:
+    path: Packages/RarKit
+
+targets:
+  MacRAR:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/MacRAR
+    info:
+      path: Sources/MacRAR/Info.plist
+      properties:
+        CFBundleName: MacRAR
+        CFBundleDisplayName: MacRAR
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: "© 2026 BeChou. MIT licensed. RAR engine © RARLAB."
+        NSPrincipalClass: NSApplication
+        NSSupportsAutomaticTermination: true
+        NSSupportsSuddenTermination: true
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.rarlab.rar-archive
+            UTTypeDescription: RAR Archive
+            UTTypeConformsTo: [public.archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [rar, r00, r01, r02, r03, r04, r05, r06, r07, r08, r09]
+              public.mime-type: [application/vnd.rar, application/x-rar-compressed]
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.7-zip.7-zip-archive
+            UTTypeDescription: 7-Zip Archive
+            UTTypeConformsTo: [public.archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [7z]
+              public.mime-type: [application/x-7z-compressed]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: RAR Archive
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes: [com.rarlab.rar-archive]
+          - CFBundleTypeName: ZIP Archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.zip-archive]
+          - CFBundleTypeName: 7-Zip Archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [org.7-zip.7-zip-archive]
+          - CFBundleTypeName: Tar Archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.tar-archive]
+          - CFBundleTypeName: Gzip Archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [org.gnu.gnu-zip-archive]
+          - CFBundleTypeName: Bzip2 Archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.bzip2-archive]
+        NSServices:
+          - NSMenuItem:
+              default: Compress with MacRAR…
+            NSMessage: compressService
+            NSPortName: MacRAR
+            # public.item lands the entry in "Files and Folders" category
+            # instead of "Internet" (where public.file-url would put it).
+            NSSendTypes: [public.item, public.content, public.folder, NSFilenamesPboardType]
+            NSSendFileTypes: [public.item]
+          - NSMenuItem:
+              default: Extract with MacRAR
+            NSMessage: extractService
+            NSPortName: MacRAR
+            NSSendTypes: [public.item, public.archive, com.rarlab.rar-archive, public.zip-archive, public.tar-archive, NSFilenamesPboardType]
+            NSSendFileTypes: [public.archive, com.rarlab.rar-archive, public.zip-archive, public.tar-archive, org.gnu.gnu-zip-archive, org.gnu.gnu-zip-tar-archive, public.bzip2-archive, org.7-zip.7-zip-archive]
+    dependencies:
+      - package: RarKit
+      - target: QuickLookExtension
+        embed: true
+    preBuildScripts:
+      - name: "Build Universal unrar"
+        script: |
+          bash "${SRCROOT}/Scripts/build-universal-binaries.sh"
+        outputFiles:
+          - $(SRCROOT)/Vendor/unrar/universal/unrar
+      - name: "Embed unrar + docs"
+        script: |
+          bash "${SRCROOT}/Scripts/embed-binaries.sh"
+        inputFiles:
+          - $(SRCROOT)/Vendor/unrar/universal/unrar
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(WRAPPER_NAME)/Contents/Helpers/MacOS/unrar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bechou.winrar
+        PRODUCT_NAME: MacRAR
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/MacRAR/Info.plist
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  QuickLookExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Sources/QuickLookExtension
+    info:
+      path: Sources/QuickLookExtension/Info.plist
+      properties:
+        CFBundleDisplayName: MacRAR Quick Look
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.preview
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PreviewViewController
+          NSExtensionAttributes:
+            QLSupportedContentTypes:
+              - com.rarlab.rar-archive
+              - public.zip-archive
+              - public.tar-archive
+              - org.gnu.gnu-zip-archive
+              - org.gnu.gnu-zip-tar-archive
+              - public.bzip2-archive
+            QLSupportsSearchableItems: false
+    dependencies:
+      - package: RarKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bechou.winrar.QuickLook
+        PRODUCT_NAME: QuickLookExtension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/QuickLookExtension/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        ENABLE_HARDENED_RUNTIME: NO
