@@ -16,9 +16,17 @@ public enum RarLicenseInstaller {
     }
 
     public static func install(from src: URL) throws {
-        let data = try Data(contentsOf: src)
-        let text = String(data: data, encoding: .ascii) ?? ""
+        let raw = try Data(contentsOf: src)
+        let text = String(data: raw, encoding: .ascii) ?? ""
         guard text.hasPrefix("RAR registration data") else { throw InstallError.invalidFile }
+
+        // Normalise line endings to LF — keys often originate from Windows
+        // (CRLF) but the macOS `rar` binary's key parser requires LF-only.
+        // Without this, valid keys may be rejected and the trial banner persists.
+        let normalised = text.replacingOccurrences(of: "\r\n", with: "\n")
+                             .replacingOccurrences(of: "\r", with: "\n")
+        let data = Data(normalised.utf8)
+
         try FileManager.default.createDirectory(
             at: installLocation.deletingLastPathComponent(),
             withIntermediateDirectories: true
