@@ -128,6 +128,18 @@ AuthKey_*.p8
 *.cer
 *.mobileprovision
 
+# RARLAB license keys (USER-PURCHASED — never commit)
+rarreg.key
+rarreg.*.key
+*-rarreg.key
+rarkey/
+**/rarkey/
+*.rarreg
+
+# Generic key files (defensive — catches misnamed test keys)
+*-private.key
+*_private.key
+
 # Proprietary RAR binary — excluded per RAR EULA, not part of repo
 _private/
 
