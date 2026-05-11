@@ -61,16 +61,26 @@ public final class RarStatusDetector {
     }
 
     private func detectLicense(_ banner: String) -> LicenseState {
-        let lines = banner.split(separator: "\n").map { String($0) }
+        let lines = banner.split(separator: "\n").map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
         if lines.contains(where: { $0.contains("Trial version") }) {
             return .trial
         }
+        // RAR 7.x prints `Registered to Be Chou` (no colon).
+        // RAR 6.x sometimes prints `Registered to: Be Chou` (with colon).
+        // Handle both, plus the optional "for ..." suffix some keys add.
+        let prefix = "Registered to"
         for line in lines {
-            if line.lowercased().contains("registered to") {
-                let parts = line.components(separatedBy: ":")
-                if parts.count >= 2 {
-                    return .registered(owner: parts[1].trimmingCharacters(in: .whitespaces))
-                }
+            guard let range = line.range(of: prefix, options: .caseInsensitive) else { continue }
+            var owner = line[range.upperBound...]
+                .trimmingCharacters(in: .whitespaces)
+            // Strip a leading colon if present (RAR 6.x style).
+            if owner.hasPrefix(":") {
+                owner = String(owner.dropFirst()).trimmingCharacters(in: .whitespaces)
+            }
+            if !owner.isEmpty {
+                return .registered(owner: owner)
             }
         }
         return .unknown
