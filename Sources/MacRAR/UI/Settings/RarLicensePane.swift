@@ -11,9 +11,33 @@ struct RarLicensePane: View {
         Form {
             Section("Current License") {
                 statusRow
-                if RarLicenseInstaller.isInstalled() {
-                    LabeledContent("Key file", value: RarLicenseInstaller.installLocation.path)
-                        .lineLimit(1).truncationMode(.middle)
+                if let info = RarLicenseInstaller.readInstalledInfo() {
+                    LabeledContent("Owner", value: info.owner)
+                    if !info.licenseType.isEmpty {
+                        LabeledContent("Type", value: info.licenseType)
+                    }
+                    if !info.uid.isEmpty {
+                        LabeledContent("UID") {
+                            Text(info.uid)
+                                .font(.system(.body, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                    }
+                    if let date = info.purchaseDate {
+                        LabeledContent("Purchase date (est.)",
+                                       value: date.formatted(date: .abbreviated, time: .omitted))
+                    }
+                    LabeledContent("Key file") {
+                        Text(installedKeyPath ?? RarLicenseInstaller.installLocation.path)
+                            .font(.system(.caption, design: .monospaced))
+                            .lineLimit(1).truncationMode(.middle)
+                            .textSelection(.enabled)
+                    }
+                    DisclosureGroup("About Maintenance") {
+                        Text("Maintenance contracts (free upgrades to future major RAR versions) are tracked by RARLAB on the server side — they are NOT encoded in this key file. Your existing key works indefinitely for RAR 7.x. When RAR 8 ships, RARLAB will email a new key if your maintenance is still active.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             Section("Manage") {
@@ -71,5 +95,16 @@ struct RarLicensePane: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Which of the searched paths currently has a key — useful when the user
+    /// installed via an older MacRAR build that wrote to the legacy `.rar/` path.
+    private var installedKeyPath: String? {
+        for path in RarLicenseInstaller.searchPaths {
+            if FileManager.default.fileExists(atPath: path.path) {
+                return path.path
+            }
+        }
+        return nil
     }
 }
