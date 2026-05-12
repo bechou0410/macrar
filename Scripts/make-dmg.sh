@@ -62,13 +62,13 @@ LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServic
       fi
     done
 
-# Make sure the /Applications copy is still the canonical registration AFTER
-# any DMG-mount artifacts. Re-register it LAST so pbs picks it as the highest
-# claim id, then restart pbs so it actually re-reads service definitions.
+# Make sure /Applications stays the canonical registration AFTER any DMG-mount
+# artifacts. Delegate full re-register + Services-restore flow to the dedicated
+# script — guarantees the Finder menu is intact when this returns.
 if [[ -d /Applications/MacRAR.app ]]; then
-  "${LSREG}" -f -R -trusted /Applications/MacRAR.app 2>/dev/null || true
-  /System/Library/CoreServices/pbs -update 2>/dev/null || true
-  killall pbs 2>/dev/null || true
+  SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+  bash "${SCRIPTS_DIR}/register-services.sh" /Applications/MacRAR.app 2>&1 \
+    | grep -E "^(→|✓|⚠)" || true
 fi
 
 echo ""
